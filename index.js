@@ -1,10 +1,11 @@
-const dns = require('node:dns');
-dns.setServers(['1.1.1.1', '1.0.0.1']); 
+const dns = require("node:dns");
+dns.setServers(["1.1.1.1", "1.0.0.1"]);
 
 const express = require("express");
 const dontenv = require("dotenv");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { jwtVerify, createRemoteJWKSet } = require("jose-cjs");
 dontenv.config();
 
 const uri = process.env.MONGODB_URI;
@@ -28,37 +29,110 @@ const client = new MongoClient(uri, {
   },
 });
 
+const JWKS = createRemoteJWKSet(
+  new URL(`${process.env.CLIENT_URL}/api/auth/jwks`),
+);
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  // console.log('authHeader:', authHeader);
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  // console.log('token:', token);
+
+  if(!token) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+    req.user = payload; // Attach the payload to the request object for further use
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+}
+
+const creatorVerifyToken = async (req, res, next) => {
+  const user = req.user;
+  if (!user || user.role !== "creator" || user.plan !== "pro") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next()
+  // const authHeader = req.headers.authorization;
+  // console.log('authHeader:', authHeader); 
+}
+const userVerifyToken = async (req, res, next) => {
+  const user = req.user;
+  if (!user || user.role !== "user" || user.plan !== "pro") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next()
+  // const authHeader = req.headers.authorization;
+  // console.log('authHeader:', authHeader); 
+}
+const adminVerifyToken = async (req, res, next) => {
+  const user = req.user;
+  if (!user || user.role !== "admin") {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next()
+  // const authHeader = req.headers.authorization;
+  // console.log('authHeader:', authHeader); 
+}
+
 async function run() {
   try {
     await client.connect();
     const db = client.db("tech-bazaar");
+    const usersCollection = db.collection("user");
     const subscriptionsCollection = db.collection("subscriptions");
-    const usersCollection = db.collection("users");
-
+    const promptsCollection = db.collection("prompts");
 
     app.post("/subscriptions", async (req, res) => {
       const { userId, priceId, sessionId } = req.body;
-      const result = await subscriptionsCollection.insertOne({
+      const isExistingSubscription = await subscriptionsCollection.findOne({
+        sessionId,
+      });
+      if (isExistingSubscription) {
+        return res.status(400).json({ message: "Subscription already exists" });
+      }
+      await subscriptionsCollection.insertOne({
         userId,
         priceId,
         sessionId,
       });
-      await usersCollection.updateOne(
+      console.log("userId:", userId);
+      const updatedResult = await usersCollection.updateOne(
         { _id: new ObjectId(userId) },
-        { $set: { plan: "premium" } }
+        { $set: { plan: "pro" } },
       );
+
+      res.json({ message: "Subscription created successfully" });
+    });
+
+    app.post("/creator/prompts", verifyToken, creatorVerifyToken, async (req, res) => {
+      const data = req.body;
+      const result = await promptsCollection.insertOne(data);
       res.json(result);
-    }
+    });
 
- 
 
+
+
+
+
+
+    
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
     );
   } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
   }
 }
 run().catch(console.dir);
