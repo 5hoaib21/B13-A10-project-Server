@@ -165,14 +165,14 @@ async function run() {
     app.get('/prompts', async (req, res) => {
       const { search } = req.query;
       console.log('Received search query:', search); // Debugging log for incoming search query
-      // const query = {}
-      // if(search && search != 'undefined') {
-      //   // for single field search, you can use regex to match the search term in the title field
-      //   // query = {title: {$regex: search, $options: 'i'}}
-      //   // for multiple field search, you can use $or operator to match the search term in multiple fields
-      //   query.$or = [
-      //     { title: { $regex: search, $options: 'i' } },
-      //     { description: { $regex: search, $options: 'i' } },
+      const query = {}
+      if(search && search != 'undefined') {
+        // for single field search, you can use regex to match the search term in the title field
+        // query = {title: {$regex: search, $options: 'i'}}
+        // for multiple field search, you can use $or operator to match the search term in multiple fields
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
           // { category: { $regex: search, $options: 'i' } },
           // { aiTool: { $regex: search, $options: 'i' } },
           // { difficulty: { $regex: search, $options: 'i' } }
