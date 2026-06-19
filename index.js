@@ -164,7 +164,7 @@ async function run() {
 
     app.get('/prompts', async (req, res) => {
       const { search } = req.query;
-      console.log('Received search query:', search); // Debugging log for incoming search query
+      // console.log('Received search query:', search); // Debugging log for incoming search query
       const query = {}
       if(search && search != 'undefined') {
         // for single field search, you can use regex to match the search term in the title field
@@ -182,6 +182,11 @@ async function run() {
       res.json(result);
     })
 
+    app.get('/prompts/:id', async (req, res) => {
+      const { id } = req.params;
+      const result = await promptsCollection.findOne({_id: new ObjectId(id)});
+      res.json(result);
+    })
 
 
 
