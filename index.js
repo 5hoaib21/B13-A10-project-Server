@@ -152,11 +152,17 @@ async function run() {
   }
 });
 
-    app.get('/creator/prompts', verifyToken, creatorVerifyToken, async (req, res) => {
-      
-      const result = await promptsCollection.find({ userId: req.user.id }).toArray();
-      res.json(result);
+    app.get('/creator/prompts',verifyToken, creatorVerifyToken,  async (req, res) => {
+      const {page = 1, limit = 10} = req.query;
+      const skip = (Number(page)  - 1) * Number(limit);
+
+      const result = await promptsCollection.find({userId: req.user.id}).skip(skip).limit(Number(limit)).toArray();
+      const totalData = await promptsCollection.countDocuments({userId: req.user.id});
+      const totalPages = Math.ceil(totalData / Number(limit));
+      res.json({data: result, page: Number(page), totalPages});
     })
+
+    
 
 
 
