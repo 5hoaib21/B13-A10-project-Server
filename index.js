@@ -117,7 +117,7 @@ async function run() {
 
     app.post("/creator/prompts", verifyToken, creatorVerifyToken, async (req, res) => {
       const data = req.body;
-      const result = await promptsCollection.insertOne(data);
+      const result = await promptsCollection.insertOne({ ...data, userId: req.user.id });
       res.json(result);
     });
 
@@ -127,7 +127,7 @@ async function run() {
 
 
 
-    
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
