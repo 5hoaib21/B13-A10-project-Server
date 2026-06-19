@@ -116,11 +116,47 @@ async function run() {
     });
 
     app.post("/creator/prompts", verifyToken, creatorVerifyToken, async (req, res) => {
-      const data = req.body;
-      const result = await promptsCollection.insertOne({ ...data, userId: req.user.id });
-      res.json(result);
+  try {
+    const data = req.body;
+    
+    // 💡 Logging incoming request to debug payload mismatches safely
+    // console.log("Incoming prompt asset payload:", data);
+    // console.log("Verified system route user token scope ID:", req.user?.id);
+
+    if (!req.user?.id) {
+      return res.status(401).json({ success: false, error: "Unauthorized access: Missing user session entity context." });
+    }
+
+    // Explicit compilation pipeline creation matching object keys structure
+    const promptDocument = {
+      ...data,
+      userId: req.user.id,
+      createdAt: new Date() // Standard architecture logging practice
+    };
+
+    const result = await promptsCollection.insertOne(promptDocument);
+    
+    // 💡 Return a clean structure to client to avoid JSON parsing exceptions
+    return res.status(201).json({
+      success: true,
+      message: "Prompt entity securely committed to target dataset context.",
+      insertedId: result.insertedId
     });
 
+  } catch (error) {
+    // console.error("Backend Database Write Exception Triggered:", error);
+    return res.status(500).json({ 
+      success: false, 
+      error: "Internal server processing failure while mapping database document." 
+    });
+  }
+});
+
+    app.get('/creator/prompts', verifyToken, creatorVerifyToken, async (req, res) => {
+      
+      const result = await promptsCollection.find({ userId: req.user.id }).toArray();
+      res.json(result);
+    })
 
 
 
