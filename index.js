@@ -156,9 +156,6 @@ async function run() {
       },
     );
 
-
-    
-
     //done!
     app.post("/api/prompts/:id/review", verifyToken, async (req, res) => {
       try {
@@ -169,12 +166,10 @@ async function run() {
         const userName = req.user.name || "Anonymous";
 
         if (!rating || rating < 1 || rating > 5) {
-          return res
-            .status(400)
-            .json({
-              success: false,
-              message: "Invalid rating. Must be between 1 and 5.",
-            });
+          return res.status(400).json({
+            success: false,
+            message: "Invalid rating. Must be between 1 and 5.",
+          });
         }
 
         const newReview = {
@@ -220,12 +215,10 @@ async function run() {
         });
       } catch (error) {
         console.error("Review Error:", error);
-        return res
-          .status(500)
-          .json({
-            success: false,
-            error: "Internal server error during review submission.",
-          });
+        return res.status(500).json({
+          success: false,
+          error: "Internal server error during review submission.",
+        });
       }
     });
 
@@ -321,46 +314,50 @@ async function run() {
       }
     });
 
-  
+    //done!
+    app.patch("/api/prompts/:id/bookmark", verifyToken, async (req, res) => {
+      try {
+        const promptId = req.params.id;
+        const userId = req.user.id;
 
+        const prompt = await promptsCollection.findOne({
+          _id: new ObjectId(promptId),
+          bookmarks: new ObjectId(userId),
+        });
 
-app.patch("/api/prompts/:id/bookmark", verifyToken, async (req, res) => {
-  try {
-    const promptId = req.params.id;
-    const userId = req.user.id; 
+        let updateQuery;
+        let isSavedNow;
 
-    const prompt = await promptsCollection.findOne({
-      _id: new ObjectId(promptId),
-      bookmarks: new ObjectId(userId)
+        if (prompt) {
+          updateQuery = { $pull: { bookmarks: new ObjectId(userId) } };
+          isSavedNow = false;
+        } else {
+          updateQuery = { $addToSet: { bookmarks: new ObjectId(userId) } };
+          isSavedNow = true;
+        }
+
+        const result = await promptsCollection.updateOne(
+          { _id: new ObjectId(promptId) },
+          updateQuery,
+        );
+
+        return res.status(200).json({
+          success: true,
+          isSaved: isSavedNow,
+          message: isSavedNow
+            ? "Added to bookmarks."
+            : "Removed from bookmarks.",
+        });
+      } catch (error) {
+        console.error("Bookmark Error:", error);
+        return res
+          .status(500)
+          .json({
+            success: false,
+            error: "Internal server error during bookmark toggle.",
+          });
+      }
     });
-
-    let updateQuery;
-    let isSavedNow;
-
-    if (prompt) {
-      updateQuery = { $pull: { bookmarks: new ObjectId(userId) } };
-      isSavedNow = false;
-    } else {
-      updateQuery = { $addToSet: { bookmarks: new ObjectId(userId) } };
-      isSavedNow = true;
-    }
-
-    const result = await promptsCollection.updateOne(
-      { _id: new ObjectId(promptId) },
-      updateQuery
-    );
-
-    return res.status(200).json({
-      success: true,
-      isSaved: isSavedNow,
-      message: isSavedNow ? "Added to bookmarks." : "Removed from bookmarks."
-    });
-
-  } catch (error) {
-    console.error("Bookmark Error:", error);
-    return res.status(500).json({ success: false, error: "Internal server error during bookmark toggle." });
-  }
-});
 
     //done!
     app.delete("/api/prompts/:id", verifyToken, async (req, res) => {
@@ -511,6 +508,28 @@ app.patch("/api/prompts/:id/bookmark", verifyToken, async (req, res) => {
       const { id } = req.params;
       const result = await promptsCollection.findOne({ _id: new ObjectId(id) });
       res.json(result);
+    });
+
+    app.get("/api/my-bookmarks", verifyToken, async (req, res) => {
+      try {
+        const userId = req.user.id;
+
+        const savedPrompts = await promptsCollection
+          .find({
+            bookmarks: new ObjectId(userId),
+          })
+          .toArray();
+
+        return res.status(200).json({
+          success: true,
+          data: savedPrompts,
+        });
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal server error." });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
