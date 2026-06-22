@@ -223,39 +223,42 @@ async function run() {
       }
     });
 
-   
-app.post("/api/prompts/:id/report", verifyToken, async (req, res) => {
-  try {
-    const promptId = req.params.id;
-    const userId = req.user.id;
-    const { reason, description } = req.body;
+    //done!
+    app.post("/api/prompts/:id/report", verifyToken, async (req, res) => {
+      try {
+        const promptId = req.params.id;
+        const userId = req.user.id;
+        const { reason, description } = req.body;
 
-    if (!reason) {
-      return res.status(400).json({ success: false, message: "Reason is required." });
-    }
+        if (!reason) {
+          return res
+            .status(400)
+            .json({ success: false, message: "Reason is required." });
+        }
 
-    const newReport = {
-      promptId: new ObjectId(promptId),
-      userId: new ObjectId(userId),
-      reason,
-      description: description || "",
-      status: "pending",
-      createdAt: new Date()
-    };
+        const newReport = {
+          promptId: new ObjectId(promptId),
+          userId: new ObjectId(userId),
+          reason,
+          description: description || "",
+          status: "pending",
+          createdAt: new Date(),
+        };
 
-    
-    const result = await reportsCollection.insertOne(newReport);
+        const result = await reportsCollection.insertOne(newReport);
 
-    return res.status(201).json({
-      success: true,
-      message: "Prompt reported successfully. Admin will review it."
+        return res.status(201).json({
+          success: true,
+          message: "Prompt reported successfully. Admin will review it.",
+        });
+      } catch (error) {
+        console.error("Report Error:", error);
+        return res.status(500).json({
+          success: false,
+          error: "Internal server error during reporting.",
+        });
+      }
     });
-
-  } catch (error) {
-    console.error("Report Error:", error);
-    return res.status(500).json({ success: false, error: "Internal server error during reporting." });
-  }
-});
 
     //done!
     app.patch("/api/prompts/:id/copy", verifyToken, async (req, res) => {
@@ -385,12 +388,10 @@ app.post("/api/prompts/:id/report", verifyToken, async (req, res) => {
         });
       } catch (error) {
         console.error("Bookmark Error:", error);
-        return res
-          .status(500)
-          .json({
-            success: false,
-            error: "Internal server error during bookmark toggle.",
-          });
+        return res.status(500).json({
+          success: false,
+          error: "Internal server error during bookmark toggle.",
+        });
       }
     });
 
@@ -561,6 +562,43 @@ app.post("/api/prompts/:id/report", verifyToken, async (req, res) => {
         });
       } catch (error) {
         console.error("Error fetching bookmarks:", error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal server error." });
+      }
+    });
+
+    app.get("/api/my-reviews", verifyToken, async (req, res) => {
+      try {
+        const userId = req.user.id;
+
+        const promptsWithMyReviews = await promptsCollection
+          .find({
+            "reviews.userId": new ObjectId(userId),
+          })
+          .toArray();
+
+        const myReviews = promptsWithMyReviews.map((prompt) => {
+          const userSpecificReview = prompt.reviews.find(
+            (rev) => rev.userId.toString() === userId,
+          );
+          return {
+            _id: prompt._id,
+            promptTitle: prompt.title,
+            aiTool: prompt.aiTool,
+            category: prompt.category,
+            myRating: userSpecificReview?.rating || 0,
+            myComment: userSpecificReview?.comment || "",
+            reviewedAt: userSpecificReview?.createdAt || new Date(),
+          };
+        });
+
+        return res.status(200).json({
+          success: true,
+          data: myReviews,
+        });
+      } catch (error) {
+        console.error("Error fetching user reviews:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
