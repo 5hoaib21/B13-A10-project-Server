@@ -321,6 +321,47 @@ async function run() {
       }
     });
 
+  
+
+
+app.patch("/api/prompts/:id/bookmark", verifyToken, async (req, res) => {
+  try {
+    const promptId = req.params.id;
+    const userId = req.user.id; 
+
+    const prompt = await promptsCollection.findOne({
+      _id: new ObjectId(promptId),
+      bookmarks: new ObjectId(userId)
+    });
+
+    let updateQuery;
+    let isSavedNow;
+
+    if (prompt) {
+      updateQuery = { $pull: { bookmarks: new ObjectId(userId) } };
+      isSavedNow = false;
+    } else {
+      updateQuery = { $addToSet: { bookmarks: new ObjectId(userId) } };
+      isSavedNow = true;
+    }
+
+    const result = await promptsCollection.updateOne(
+      { _id: new ObjectId(promptId) },
+      updateQuery
+    );
+
+    return res.status(200).json({
+      success: true,
+      isSaved: isSavedNow,
+      message: isSavedNow ? "Added to bookmarks." : "Removed from bookmarks."
+    });
+
+  } catch (error) {
+    console.error("Bookmark Error:", error);
+    return res.status(500).json({ success: false, error: "Internal server error during bookmark toggle." });
+  }
+});
+
     //done!
     app.delete("/api/prompts/:id", verifyToken, async (req, res) => {
       try {
