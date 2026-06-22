@@ -93,6 +93,7 @@ async function run() {
     const usersCollection = db.collection("user");
     const subscriptionsCollection = db.collection("subscriptions");
     const promptsCollection = db.collection("prompts");
+    const reportsCollection = db.collection("reports");
 
     //done!
     app.post("/subscriptions", async (req, res) => {
@@ -221,6 +222,40 @@ async function run() {
         });
       }
     });
+
+   
+app.post("/api/prompts/:id/report", verifyToken, async (req, res) => {
+  try {
+    const promptId = req.params.id;
+    const userId = req.user.id;
+    const { reason, description } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ success: false, message: "Reason is required." });
+    }
+
+    const newReport = {
+      promptId: new ObjectId(promptId),
+      userId: new ObjectId(userId),
+      reason,
+      description: description || "",
+      status: "pending",
+      createdAt: new Date()
+    };
+
+    
+    const result = await reportsCollection.insertOne(newReport);
+
+    return res.status(201).json({
+      success: true,
+      message: "Prompt reported successfully. Admin will review it."
+    });
+
+  } catch (error) {
+    console.error("Report Error:", error);
+    return res.status(500).json({ success: false, error: "Internal server error during reporting." });
+  }
+});
 
     //done!
     app.patch("/api/prompts/:id/copy", verifyToken, async (req, res) => {
