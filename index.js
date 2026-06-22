@@ -94,6 +94,8 @@ async function run() {
     const subscriptionsCollection = db.collection("subscriptions");
     const promptsCollection = db.collection("prompts");
 
+
+    //done!
     app.post("/subscriptions", async (req, res) => {
       const { userId, priceId, sessionId } = req.body;
       const isExistingSubscription = await subscriptionsCollection.findOne({
@@ -115,7 +117,7 @@ async function run() {
 
       res.json({ message: "Subscription created successfully" });
     });
-
+    //done!
     app.post(
       "/api/prompts",
       verifyToken,
@@ -155,20 +157,99 @@ async function run() {
       },
     );
 
-    app.patch("/api/prompts/:id", userVerifyToken, async (req, res) => {
-      const { id } = req.params;
-      const data = req.body;
-      const result = await promptsCollection.updateOne(
-        { _id: new ObjectId(id) },
-        {
-          $set: {
-            ...data,
-          },
-        },
-      );
-      res.json(result);
-    });
 
+app.patch("/api/prompts/:id/copy",  async (req, res) => {
+  try {
+    const promptId = req.params.id;
+   console.log("📥 Received Prompt ID for copy:", promptId);
+
+  
+    const result = await promptsCollection.updateOne(
+      { _id: new ObjectId(promptId) },
+      { $inc: { copyCount: 1 } }
+    );
+console.log("Result:", result);
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Prompt not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Copy count updated successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error during copy update.",
+    });
+  }
+});
+
+
+//done!
+app.patch(
+  "/api/prompts/:id",
+  verifyToken,
+  async (req, res) => {
+    try {
+      const promptId = req.params.id;
+      const updatedData = req.body;
+
+      if (!req.user?.id) {
+        return res.status(401).json({
+          success: false,
+          error: "Unauthorized access.",
+        });
+      }
+
+     
+      const { title, content, aiTool, difficulty, category, visibility, tags } = updatedData;
+      
+      const updateDoc = {
+        $set: {
+          ...(title && { title }),
+          ...(content && { content }),
+          ...(aiTool && { aiTool }),
+          ...(difficulty && { difficulty }),
+          ...(category && { category }),
+          ...(visibility && { visibility }),
+          ...(Array.isArray(tags) && { tags }), 
+          updatedAt: new Date(),
+        },
+      };
+
+      
+      const query = { 
+        _id: new ObjectId(promptId), 
+        userId: req.user.id 
+      };
+
+      const result = await promptsCollection.updateOne(query, updateDoc);
+
+      if (result.matchedCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Prompt not found or you don't have permission to update.",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "Prompt updated successfully.",
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Internal server error during update.",
+      });
+    }
+  }
+);
+
+    //done!
     app.delete("/api/prompts/:id",verifyToken,async (req, res) => {
         try {
           const promptId = req.params.id;
