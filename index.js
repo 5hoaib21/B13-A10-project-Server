@@ -97,7 +97,7 @@ async function run() {
 
     //done!
     app.post("/subscriptions", async (req, res) => {
-      const { userId, priceId, sessionId, price } = req.body;
+      const { userId, priceId, sessionId, price, customerName, customerEmail  } = req.body;
       const isExistingSubscription = await subscriptionsCollection.findOne({
         sessionId,
       });
@@ -106,6 +106,8 @@ async function run() {
       }
       await subscriptionsCollection.insertOne({
         userId,
+        customerEmail: customerEmail || "N/A",
+        customerName: customerName || "N/A",
         priceId,
         sessionId,
         price,
