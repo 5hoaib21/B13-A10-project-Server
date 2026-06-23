@@ -118,11 +118,7 @@ async function run() {
       res.json({ message: "Subscription created successfully" });
     });
     //done!
-    app.post(
-      "/api/prompts",
-      verifyToken,
-
-      async (req, res) => {
+    app.post("/api/prompts", verifyToken,async (req, res) => {
         try {
           const data = req.body;
           if (!req.user?.id) {
@@ -132,6 +128,33 @@ async function run() {
                 "Unauthorized access: Missing user session entity context.",
             });
           }
+
+          const userId = req.user.id;
+          const userObjectId = new ObjectId(userId);
+
+          const user = await usersCollection.findOne({ _id: userObjectId })
+          if(!user) {
+            return res.status(404).json({
+              success: false,
+              error: 'user account context not found in database'
+            })
+          } 
+
+          const isPro = user.plan === 'pro';
+
+          if(!isPro) {
+            const existingPromptCount = await promptsCollection.countDocuments({
+              $or: [{ userId: userObjectId }, { userId: userId }]
+            })
+            if(existingPromptCount >= 3) {
+              return res.status(403).json({
+                success: false,
+                isLimitExceeded: true,
+                error: "Limit exceeded: Free tier accounts are capped at 3 prompts. Please upgrade to premium.",
+              })
+            }
+          }
+
 
           const promptDocument = {
             ...data,
@@ -708,7 +731,7 @@ async function run() {
       }
     });
 
-
+    //done!
     app.get("/api/user-analytics", verifyToken, async (req, res) => {
       try {
         const userId = req.user.id; 
@@ -737,6 +760,11 @@ async function run() {
           .json({ success: false, error: "Internal server error." });
       }
     });
+
+
+    // app.get('/api/prompts', async (req, res) => {
+
+    // })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
