@@ -605,6 +605,46 @@ async function run() {
       }
     });
 
+    app.get("/api/my-profile", verifyToken, async (req, res) => {
+      try {
+        const userId = req.user.id;
+
+        const user = await usersCollection.findOne({
+          _id: new ObjectId(userId),
+        });
+
+        if (!user) {
+          return res
+            .status(404)
+            .json({ success: false, error: "User not found." });
+        }
+
+        const totalPrompts = await promptsCollection.countDocuments({
+          $or: [
+            { userId: new ObjectId(userId) },
+            { userId: userId },
+          ],
+        });
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            name: user.name,
+            email: user.email,
+            image: user.image || "",
+            role: user.role || "user",
+            plan: user.plan || "free",
+            totalPrompts: totalPrompts || 0,
+          },
+        });
+      } catch (error) {
+        console.error("Profile Error:", error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal server error." });
+      }
+    });
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!",
