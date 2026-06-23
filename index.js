@@ -645,6 +645,7 @@ async function run() {
       }
     });
 
+    //done!
     app.get("/api/creator-analytics", verifyToken, async (req, res) => {
       try {
         const creatorId = req.user.id; // verifyToken থেকে পাওয়া আইডি
@@ -657,14 +658,12 @@ async function run() {
 
         const creatorObjectId = new ObjectId(creatorId);
 
-       
         const totalPrompts = await promptsCollection.countDocuments({
           $or: [{ userId: creatorObjectId }, { userId: creatorId }],
         });
 
         const stats = await promptsCollection
           .aggregate([
-         
             {
               $match: {
                 $or: [{ userId: creatorObjectId }, { userId: creatorId }],
@@ -674,7 +673,7 @@ async function run() {
               $group: {
                 _id: null,
                 totalCopies: { $sum: { $ifNull: ["$copyCount", 0] } },
-              
+
                 totalBookmarks: {
                   $sum: {
                     $cond: {
@@ -689,7 +688,6 @@ async function run() {
           ])
           .toArray();
 
-      
         console.log(
           `Analytics for ${creatorId} -> Prompts: ${totalPrompts}, Copies: ${stats[0]?.totalCopies || 0}`,
         );
@@ -704,6 +702,36 @@ async function run() {
         });
       } catch (error) {
         console.error("Analytics Error:", error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal server error." });
+      }
+    });
+
+
+    app.get("/api/user-analytics", verifyToken, async (req, res) => {
+      try {
+        const userId = req.user.id; 
+        const userObjectId = new ObjectId(userId);
+
+        const totalBookmarks = await promptsCollection.countDocuments({
+          bookmarks: { $in: [userId, userObjectId] }, 
+        });
+
+        const totalReviews = await promptsCollection.countDocuments({
+          "reviews.userId": userObjectId,
+        });
+
+        return res.status(200).json({
+          success: true,
+          analytics: {
+            totalBookmarks: totalBookmarks || 0,
+            totalReviews: totalReviews || 0,
+            totalCopies: 0, 
+          },
+        });
+      } catch (error) {
+        console.error("User Analytics Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
