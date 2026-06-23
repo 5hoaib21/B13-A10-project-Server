@@ -52,7 +52,7 @@ const verifyToken = async (req, res, next) => {
     req.user = payload; // Attach the payload to the request object for further use
     next();
   } catch (error) {
-    console.error("Token verification failed:", error);
+    // console.error("Token verification failed:", error);
     return res.status(401).json({ message: "Unauthorized" });
   }
 };
@@ -112,7 +112,7 @@ async function run() {
         sessionId,
         price,
       });
-      console.log("userId:", userId);
+      // console.log("userId:", userId);
       const updatedResult = await usersCollection.updateOne(
         { _id: new ObjectId(userId) },
         { $set: { plan: "pro" } },
@@ -120,6 +120,7 @@ async function run() {
 
       res.json({ message: "Subscription created successfully" });
     });
+    
     //done!
     app.post("/api/prompts", verifyToken,async (req, res) => {
         try {
@@ -241,7 +242,7 @@ async function run() {
           newReview,
         });
       } catch (error) {
-        console.error("Review Error:", error);
+        // console.error("Review Error:", error);
         return res.status(500).json({
           success: false,
           error: "Internal server error during review submission.",
@@ -278,7 +279,7 @@ async function run() {
           message: "Prompt reported successfully. Admin will review it.",
         });
       } catch (error) {
-        console.error("Report Error:", error);
+        // console.error("Report Error:", error);
         return res.status(500).json({
           success: false,
           error: "Internal server error during reporting.",
@@ -290,13 +291,13 @@ async function run() {
     app.patch("/api/prompts/:id/copy", verifyToken, async (req, res) => {
       try {
         const promptId = req.params.id;
-        console.log("📥 Received Prompt ID for copy:", promptId);
+        // console.log("📥 Received Prompt ID for copy:", promptId);
 
         const result = await promptsCollection.updateOne(
           { _id: new ObjectId(promptId) },
           { $inc: { copyCount: 1 } },
         );
-        console.log("Result:", result);
+        // console.log("Result:", result);
         if (result.matchedCount === 0) {
           return res.status(404).json({
             success: false,
@@ -413,7 +414,7 @@ async function run() {
             : "Removed from bookmarks.",
         });
       } catch (error) {
-        console.error("Bookmark Error:", error);
+        // console.error("Bookmark Error:", error);
         return res.status(500).json({
           success: false,
           error: "Internal server error during bookmark toggle.",
@@ -481,9 +482,10 @@ async function run() {
     );
 
     //pending.... pending prompt for admin approval
-    app.get("/admin/prompts", adminVerifyToken, async (req, res) => {
+    app.get("/admin/prompts", verifyToken, adminVerifyToken, async (req, res) => {
       const query = {};
       const result = await promptsCollection.find(query).toArray();
+      console.log('result form admin route:', result);
       res.json(result);
     });
 
@@ -492,13 +494,13 @@ async function run() {
       try {
         const { search, category, aiTool, difficulty, sort } = req.query;
 
-        console.log("📥 Received query:", {
-          search,
-          category,
-          aiTool,
-          difficulty,
-          sort,
-        });
+        // console.log("📥 Received query:", {
+        //   search,
+        //   category,
+        //   aiTool,
+        //   difficulty,
+        //   sort,
+        // });
 
         const query = {};
 
@@ -534,12 +536,12 @@ async function run() {
           difficulty !== ""
         ) {
           query.difficulty = difficulty; // ← এটা ঠিক আছে
-          console.log("✅ Difficulty added to query:", difficulty);
+          // console.log("✅ Difficulty added to query:", difficulty);
         }
 
-        console.log("🔍 Final MongoDB Query:", JSON.stringify(query, null, 2));
+        // console.log("🔍 Final MongoDB Query:", JSON.stringify(query, null, 2));
 
-        console.log("🔍 MongoDB Query:", JSON.stringify(query, null, 2));
+        // console.log("🔍 MongoDB Query:", JSON.stringify(query, null, 2));
 
         // Sort
         let sortOptions = { createdAt: -1 };
@@ -554,10 +556,10 @@ async function run() {
           .sort(sortOptions)
           .toArray();
 
-        console.log(`✅ Found ${result.length} prompts`);
+        // console.log(`✅ Found ${result.length} prompts`);
         res.json(result);
       } catch (error) {
-        console.error("❌ Error:", error);
+        // console.error("❌ Error:", error);
         res.status(500).json({
           success: false,
           message: error.message,
@@ -588,7 +590,7 @@ async function run() {
           data: savedPrompts,
         });
       } catch (error) {
-        console.error("Error fetching bookmarks:", error);
+        // console.error("Error fetching bookmarks:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -626,7 +628,7 @@ async function run() {
           data: myReviews,
         });
       } catch (error) {
-        console.error("Error fetching user reviews:", error);
+        // console.error("Error fetching user reviews:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -664,7 +666,7 @@ async function run() {
           },
         });
       } catch (error) {
-        console.error("Profile Error:", error);
+        // console.error("Profile Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -714,9 +716,9 @@ async function run() {
           ])
           .toArray();
 
-        console.log(
-          `Analytics for ${creatorId} -> Prompts: ${totalPrompts}, Copies: ${stats[0]?.totalCopies || 0}`,
-        );
+        // console.log(
+        //   `Analytics for ${creatorId} -> Prompts: ${totalPrompts}, Copies: ${stats[0]?.totalCopies || 0}`,
+        // );
 
         return res.status(200).json({
           success: true,
@@ -727,7 +729,7 @@ async function run() {
           },
         });
       } catch (error) {
-        console.error("Analytics Error:", error);
+        // console.error("Analytics Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -757,7 +759,7 @@ async function run() {
           },
         });
       } catch (error) {
-        console.error("User Analytics Error:", error);
+        // console.error("User Analytics Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
