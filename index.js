@@ -546,6 +546,7 @@ async function run() {
       res.json(result);
     });
 
+    //done!
     app.get("/api/my-bookmarks", verifyToken, async (req, res) => {
       try {
         const userId = req.user.id;
@@ -568,6 +569,7 @@ async function run() {
       }
     });
 
+    //done!
     app.get("/api/my-reviews", verifyToken, async (req, res) => {
       try {
         const userId = req.user.id;
@@ -605,6 +607,7 @@ async function run() {
       }
     });
 
+    //done!
     app.get("/api/my-profile", verifyToken, async (req, res) => {
       try {
         const userId = req.user.id;
@@ -620,10 +623,7 @@ async function run() {
         }
 
         const totalPrompts = await promptsCollection.countDocuments({
-          $or: [
-            { userId: new ObjectId(userId) },
-            { userId: userId },
-          ],
+          $or: [{ userId: new ObjectId(userId) }, { userId: userId }],
         });
 
         return res.status(200).json({
@@ -639,6 +639,71 @@ async function run() {
         });
       } catch (error) {
         console.error("Profile Error:", error);
+        return res
+          .status(500)
+          .json({ success: false, error: "Internal server error." });
+      }
+    });
+
+    app.get("/api/creator-analytics", verifyToken, async (req, res) => {
+      try {
+        const creatorId = req.user.id; // verifyToken থেকে পাওয়া আইডি
+
+        if (!creatorId) {
+          return res
+            .status(400)
+            .json({ success: false, error: "User ID missing from token." });
+        }
+
+        const creatorObjectId = new ObjectId(creatorId);
+
+       
+        const totalPrompts = await promptsCollection.countDocuments({
+          $or: [{ userId: creatorObjectId }, { userId: creatorId }],
+        });
+
+        const stats = await promptsCollection
+          .aggregate([
+         
+            {
+              $match: {
+                $or: [{ userId: creatorObjectId }, { userId: creatorId }],
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                totalCopies: { $sum: { $ifNull: ["$copyCount", 0] } },
+              
+                totalBookmarks: {
+                  $sum: {
+                    $cond: {
+                      if: { $isArray: "$bookmarks" },
+                      then: { $size: "$bookmarks" },
+                      else: 0,
+                    },
+                  },
+                },
+              },
+            },
+          ])
+          .toArray();
+
+      
+        console.log(
+          `Analytics for ${creatorId} -> Prompts: ${totalPrompts}, Copies: ${stats[0]?.totalCopies || 0}`,
+        );
+
+        return res.status(200).json({
+          success: true,
+          analytics: {
+            totalPrompts: totalPrompts || 0,
+            totalCopies: stats[0]?.totalCopies || 0,
+            totalBookmarks: stats[0]?.totalBookmarks || 0,
+          },
+        });
+      } catch (error) {
+        console.error("Analytics Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
