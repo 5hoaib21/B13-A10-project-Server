@@ -489,6 +489,13 @@ async function run() {
       res.json(result);
     });
 
+    app.get("/admin/payments", verifyToken, adminVerifyToken, async (req, res) => {
+      const query = {};
+      const result = await subscriptionsCollection.find(query).toArray();
+      console.log('result form admin route:', result);
+      res.json(result);
+    });
+
     //done! public api
     app.get("/prompts", async (req, res) => {
       try {
