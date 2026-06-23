@@ -97,7 +97,7 @@ async function run() {
 
     //done!
     app.post("/subscriptions", async (req, res) => {
-      const { userId, priceId, sessionId } = req.body;
+      const { userId, priceId, sessionId, price } = req.body;
       const isExistingSubscription = await subscriptionsCollection.findOne({
         sessionId,
       });
@@ -108,6 +108,7 @@ async function run() {
         userId,
         priceId,
         sessionId,
+        price,
       });
       console.log("userId:", userId);
       const updatedResult = await usersCollection.updateOne(
