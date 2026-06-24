@@ -97,7 +97,8 @@ async function run() {
 
     //done!
     app.post("/subscriptions", async (req, res) => {
-      const { userId, priceId, sessionId, price, customerName, customerEmail  } = req.body;
+      const { userId, priceId, sessionId, price, customerName, customerEmail } =
+        req.body;
       const isExistingSubscription = await subscriptionsCollection.findOne({
         sessionId,
       });
@@ -120,69 +121,67 @@ async function run() {
 
       res.json({ message: "Subscription created successfully" });
     });
-    
+
     //done!
-    app.post("/api/prompts", verifyToken,async (req, res) => {
-        try {
-          const data = req.body;
-          if (!req.user?.id) {
-            return res.status(401).json({
-              success: false,
-              error:
-                "Unauthorized access: Missing user session entity context.",
-            });
-          }
-
-          const userId = req.user.id;
-          const userObjectId = new ObjectId(userId);
-
-          const user = await usersCollection.findOne({ _id: userObjectId })
-          if(!user) {
-            return res.status(404).json({
-              success: false,
-              error: 'user account context not found in database'
-            })
-          } 
-
-          const isPro = user.plan === 'pro';
-
-          if(!isPro) {
-            const existingPromptCount = await promptsCollection.countDocuments({
-              $or: [{ userId: userObjectId }, { userId: userId }]
-            })
-            if(existingPromptCount >= 3) {
-              return res.status(403).json({
-                success: false,
-                isLimitExceeded: true,
-                error: "Limit exceeded: Free tier accounts are capped at 3 prompts. Please upgrade to premium.",
-              })
-            }
-          }
-
-
-          const promptDocument = {
-            ...data,
-            userId: req.user.id,
-            createdAt: new Date(),
-          };
-
-          const result = await promptsCollection.insertOne(promptDocument);
-
-          return res.status(201).json({
-            success: true,
-            message:
-              "Prompt entity securely committed to target dataset context.",
-            insertedId: result.insertedId,
-          });
-        } catch (error) {
-          return res.status(500).json({
+    app.post("/api/prompts", verifyToken, async (req, res) => {
+      try {
+        const data = req.body;
+        if (!req.user?.id) {
+          return res.status(401).json({
             success: false,
-            error:
-              "Internal server processing failure while mapping database document.",
+            error: "Unauthorized access: Missing user session entity context.",
           });
         }
-      },
-    );
+
+        const userId = req.user.id;
+        const userObjectId = new ObjectId(userId);
+
+        const user = await usersCollection.findOne({ _id: userObjectId });
+        if (!user) {
+          return res.status(404).json({
+            success: false,
+            error: "user account context not found in database",
+          });
+        }
+
+        const isPro = user.plan === "pro";
+
+        if (!isPro) {
+          const existingPromptCount = await promptsCollection.countDocuments({
+            $or: [{ userId: userObjectId }, { userId: userId }],
+          });
+          if (existingPromptCount >= 3) {
+            return res.status(403).json({
+              success: false,
+              isLimitExceeded: true,
+              error:
+                "Limit exceeded: Free tier accounts are capped at 3 prompts. Please upgrade to premium.",
+            });
+          }
+        }
+
+        const promptDocument = {
+          ...data,
+          userId: req.user.id,
+          createdAt: new Date(),
+        };
+
+        const result = await promptsCollection.insertOne(promptDocument);
+
+        return res.status(201).json({
+          success: true,
+          message:
+            "Prompt entity securely committed to target dataset context.",
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        return res.status(500).json({
+          success: false,
+          error:
+            "Internal server processing failure while mapping database document.",
+        });
+      }
+    });
 
     //done!
     app.post("/api/prompts/:id/review", verifyToken, async (req, res) => {
@@ -422,38 +421,79 @@ async function run() {
       }
     });
 
+    //done!
+    app.patch(
+      "/admin/users/role/:id",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { role } = req.body;
 
-app.patch("/admin/users/role/:id", verifyToken, adminVerifyToken, async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { role } = req.body; 
+          const allowedRoles = ["user", "creator", "admin"];
+          if (!allowedRoles.includes(role)) {
+            return res.status(400).json({ message: "Invalid role type!" });
+          }
 
-    const allowedRoles = ["user", "creator", "admin"];
-    if (!allowedRoles.includes(role)) {
-      return res.status(400).json({ message: "Invalid role type!" });
-    }
+          const query = { _id: new ObjectId(id) };
 
-    const query = { _id: new ObjectId(id) };
-    
-    const updateDoc = {
-      $set: { role: role },
-    };
+          const updateDoc = {
+            $set: { role: role },
+          };
 
-    const result = await usersCollection.updateOne(query, updateDoc);
+          const result = await usersCollection.updateOne(query, updateDoc);
 
-    if (result.modifiedCount === 0) {
-      return res.status(404).json({ message: "User not found or role is already the same!" });
-    }
+          if (result.modifiedCount === 0) {
+            return res
+              .status(404)
+              .json({ message: "User not found or role is already the same!" });
+          }
 
-    console.log(`User ${id} role updated to ${role} successfully!`);
-    res.json({ success: true, message: `User role updated to ${role} successfully!` });
+          console.log(`User ${id} role updated to ${role} successfully!`);
+          res.json({
+            success: true,
+            message: `User role updated to ${role} successfully!`,
+          });
+        } catch (error) {
+          console.error("Error updating user role:", error);
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      },
+    );
 
-  } catch (error) {
-    console.error("Error updating user role:", error);
-    res.status(500).json({ message: "Internal Server Error" });
-  }
-});
+    app.delete(
+      "/admin/users/:id",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
 
+          const result = await usersCollection.deleteOne(query);
+
+          if (result.deletedCount === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "User not found or already deleted!",
+            });
+          }
+          console.log(`User with ID ${id} deleted successfully by admin.`);
+
+          res.json({
+            success: true,
+            message: "User account deleted successfully!",
+          });
+        } catch (error) {
+          console.error("Error deleting user:", error);
+          res.status(500).json({
+            success: false,
+            message: "Internal Server Error",
+          });
+        }
+      },
+    );
     //done!
     app.delete("/api/prompts/:id", verifyToken, async (req, res) => {
       try {
@@ -514,28 +554,38 @@ app.patch("/admin/users/role/:id", verifyToken, adminVerifyToken, async (req, re
     );
 
     //pending.... pending prompt for admin approval
-    app.get("/admin/prompts", verifyToken, adminVerifyToken, async (req, res) => {
-      const query = {};
-      const result = await promptsCollection.find(query).toArray();
-      console.log('result form admin route:', result);
-      res.json(result);
-    });
+    app.get(
+      "/admin/prompts",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        const query = {};
+        const result = await promptsCollection.find(query).toArray();
+        console.log("result form admin route:", result);
+        res.json(result);
+      },
+    );
 
     //pending... admin activity
     app.get("/admin/users", verifyToken, adminVerifyToken, async (req, res) => {
       const query = {};
       const result = await usersCollection.find(query).toArray();
-      console.log('result form admin route:', result);
+      console.log("result form admin route:", result);
       res.json(result);
     });
 
     //done!
-    app.get("/admin/payments", verifyToken, adminVerifyToken, async (req, res) => {
-      const query = {};
-      const result = await subscriptionsCollection.find(query).toArray();
-      console.log('result form admin route:', result);
-      res.json(result);
-    });
+    app.get(
+      "/admin/payments",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        const query = {};
+        const result = await subscriptionsCollection.find(query).toArray();
+        console.log("result form admin route:", result);
+        res.json(result);
+      },
+    );
 
     //done! public api
     app.get("/prompts", async (req, res) => {
@@ -787,11 +837,11 @@ app.patch("/admin/users/role/:id", verifyToken, adminVerifyToken, async (req, re
     //done!
     app.get("/api/user-analytics", verifyToken, async (req, res) => {
       try {
-        const userId = req.user.id; 
+        const userId = req.user.id;
         const userObjectId = new ObjectId(userId);
 
         const totalBookmarks = await promptsCollection.countDocuments({
-          bookmarks: { $in: [userId, userObjectId] }, 
+          bookmarks: { $in: [userId, userObjectId] },
         });
 
         const totalReviews = await promptsCollection.countDocuments({
@@ -803,7 +853,7 @@ app.patch("/admin/users/role/:id", verifyToken, adminVerifyToken, async (req, re
           analytics: {
             totalBookmarks: totalBookmarks || 0,
             totalReviews: totalReviews || 0,
-            totalCopies: 0, 
+            totalCopies: 0,
           },
         });
       } catch (error) {
@@ -813,7 +863,6 @@ app.patch("/admin/users/role/:id", verifyToken, adminVerifyToken, async (req, re
           .json({ success: false, error: "Internal server error." });
       }
     });
-
 
     // app.get('/api/prompts', async (req, res) => {
 
