@@ -422,6 +422,38 @@ async function run() {
       }
     });
 
+
+app.patch("/admin/users/role/:id", verifyToken, adminVerifyToken, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { role } = req.body; 
+
+    const allowedRoles = ["user", "creator", "admin"];
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: "Invalid role type!" });
+    }
+
+    const query = { _id: new ObjectId(id) };
+    
+    const updateDoc = {
+      $set: { role: role },
+    };
+
+    const result = await usersCollection.updateOne(query, updateDoc);
+
+    if (result.modifiedCount === 0) {
+      return res.status(404).json({ message: "User not found or role is already the same!" });
+    }
+
+    console.log(`User ${id} role updated to ${role} successfully!`);
+    res.json({ success: true, message: `User role updated to ${role} successfully!` });
+
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
     //done!
     app.delete("/api/prompts/:id", verifyToken, async (req, res) => {
       try {
@@ -489,7 +521,7 @@ async function run() {
       res.json(result);
     });
 
-    //done!
+    //pending... admin activity
     app.get("/admin/users", verifyToken, adminVerifyToken, async (req, res) => {
       const query = {};
       const result = await usersCollection.find(query).toArray();
