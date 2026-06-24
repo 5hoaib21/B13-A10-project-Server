@@ -747,6 +747,61 @@ async function run() {
       }
     });
 
+    //pending...
+   app.get("/admin/analytics", verifyToken, adminVerifyToken, async (req, res) => {
+  try {
+    const totalUsers = await usersCollection.countDocuments();
+    const totalPrompts = await promptsCollection.countDocuments();
+    const totalReviews = await reportsCollection.countDocuments(); 
+
+    const copyAggregation = await promptsCollection.aggregate([
+      { $group: { _id: null, totalCopies: { $sum: "$copyCount" } } }
+    ]).toArray();
+    const totalCopies = copyAggregation[0]?.totalCopies || 0;
+
+    
+    const revenueAggregation = await subscriptionsCollection.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: { $toDouble: "$price" } }
+        }
+      }
+    ]).toArray();
+    const totalRevenue = revenueAggregation[0]?.totalRevenue || 0;
+
+    const aiToolStats = await promptsCollection.aggregate([
+      { $group: { _id: "$aiTool", Prompts: { $sum: 1 }, Copies: { $sum: "$copyCount" } } }
+    ]).toArray();
+
+    const engineData = aiToolStats.map(stat => {
+      const rawName = stat._id || "unknown";
+      return {
+        name: rawName.charAt(0).toUpperCase() + rawName.slice(1),
+        Copies: stat.Copies || 0,
+        Prompts: stat.Prompts || 0
+      };
+    });
+
+    
+    res.json({
+      success: true,
+      stats: {
+        totalUsers,
+        totalPrompts,
+        totalReviews,
+        totalCopies,
+        totalRevenue 
+      },
+      engineData
+    });
+
+  } catch (error) {
+    console.error("Analytics Pipeline Error:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+});
+
     //done!
     app.get(
       "/api/prompts",
