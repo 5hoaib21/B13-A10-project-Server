@@ -462,6 +462,82 @@ async function run() {
       },
     );
 
+    app.patch(
+      "/admin/prompts/status/:id",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { status } = req.body;
+
+          const allowedStatuses = ["pending", "approved", "rejected"];
+          if (!allowedStatuses.includes(status)) {
+            return res
+              .status(400)
+              .json({ success: false, message: "Invalid status type!" });
+          }
+
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = {
+            $set: { status: status },
+          };
+
+          const result = await promptsCollection.updateOne(query, updateDoc);
+
+          if (result.matchedCount === 0) {
+            return res
+              .status(404)
+              .json({ success: false, message: "Prompt not found!" });
+          }
+
+          res.json({
+            success: true,
+            message: `Prompt status updated to '${status}' successfully!`,
+          });
+        } catch (error) {
+          console.error("Error updating prompt status:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error" });
+        }
+      },
+    );
+
+    app.delete(
+      "/admin/prompts/:id",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+
+          const result = await promptsCollection.deleteOne(query);
+
+          if (result.deletedCount === 0) {
+            return res
+              .status(404)
+              .json({
+                success: false,
+                message: "Prompt not found or already deleted!",
+              });
+          }
+
+          res.json({
+            success: true,
+            message: "Prompt deleted successfully from database!",
+          });
+        } catch (error) {
+          console.error("Error deleting prompt:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error" });
+        }
+      },
+    );
+
+    //done!
     app.delete(
       "/admin/users/:id",
       verifyToken,
