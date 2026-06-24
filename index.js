@@ -262,13 +262,32 @@ async function run() {
             .json({ success: false, message: "Reason is required." });
         }
 
+        const targetedPrompt = await promptsCollection.findOne({
+          _id: new ObjectId(promptId),
+        });
+        if(!targetedPrompt){
+          return res.status(404).json({success: false, message: 'prompt not found'})
+        }
+
+        const reporterUser = await usersCollection.findOne({
+          _id: new ObjectId(userId),
+        });
+
         const newReport = {
           promptId: new ObjectId(promptId),
+          promptTitle: targetedPrompt.title || 'UnTitled Prompt' ,
           userId: new ObjectId(userId),
           reason,
           description: description || "",
           status: "pending",
           createdAt: new Date(),
+
+          // reporterUser
+          reporter: {
+            name: reporterUser?.name || "Anonymous",
+            email: reporterUser?.email || "No Email",
+            image: reporterUser?.image || "",
+          },
         };
 
         const result = await reportsCollection.insertOne(newReport);
@@ -285,6 +304,47 @@ async function run() {
         });
       }
     });
+
+    //done
+    app.post(
+      "/admin/reports/warn-creator",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const { creatorEmail, reportId } = req.body;
+
+          if (!creatorEmail) {
+            return res
+              .status(400)
+              .json({ success: false, message: "Creator email is required!" });
+          }
+
+          const userQuery = { email: creatorEmail };
+          const updateDoc = {
+            $inc: { warningCount: 1 },
+          };
+          await usersCollection.updateOne(userQuery, updateDoc);
+
+          if (reportId) {
+            await reportsCollection.updateOne(
+              { _id: new ObjectId(reportId) },
+              { $set: { status: "warned" } },
+            );
+          }
+
+          res.json({
+            success: true,
+            message: `Warning successfully sent to creator (${creatorEmail})!`,
+          });
+        } catch (error) {
+          console.error("Error warning creator:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error" });
+        }
+      },
+    );
 
     //done!
     app.patch("/api/prompts/:id/copy", verifyToken, async (req, res) => {
@@ -462,6 +522,7 @@ async function run() {
       },
     );
 
+    //done!
     app.patch(
       "/admin/prompts/status/:id",
       verifyToken,
@@ -504,6 +565,87 @@ async function run() {
       },
     );
 
+    //done
+    app.delete(
+      "/admin/reports/dismiss/:id",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const reportId = req.params.id;
+          const query = { _id: new ObjectId(reportId) };
+
+          const result = await reportsCollection.deleteOne(query);
+
+          if (result.deletedCount === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "Report not found or already dismissed!",
+            });
+          }
+
+          res.json({
+            success: true,
+            message: "Report dismissed and cleared successfully!",
+          });
+        } catch (error) {
+          console.error("Error dismissing report:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error" });
+        }
+      },
+    );
+
+    //done
+    app.delete(
+      "/admin/reports/remove-prompt",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const { reportId, promptId } = req.body;
+
+          if (!reportId || !promptId) {
+            return res
+              .status(400)
+              .json({
+                success: false,
+                message: "Report ID and Prompt ID are required!",
+              });
+          }
+
+          const promptResult = await promptsCollection.deleteOne({
+            _id: new ObjectId(promptId),
+          });
+
+          const reportResult = await reportsCollection.deleteOne({
+            _id: new ObjectId(reportId),
+          });
+
+          if (
+            promptResult.deletedCount === 0 &&
+            reportResult.deletedCount === 0
+          ) {
+            return res
+              .status(404)
+              .json({ success: false, message: "Prompt or Report not found!" });
+          }
+
+          res.json({
+            success: true,
+            message: "Prompt permanently removed and report cleared!",
+          });
+        } catch (error) {
+          console.error("Error removing reported prompt:", error);
+          res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error" });
+        }
+      },
+    );
+
+    //done!
     app.delete(
       "/admin/prompts/:id",
       verifyToken,
@@ -516,12 +658,10 @@ async function run() {
           const result = await promptsCollection.deleteOne(query);
 
           if (result.deletedCount === 0) {
-            return res
-              .status(404)
-              .json({
-                success: false,
-                message: "Prompt not found or already deleted!",
-              });
+            return res.status(404).json({
+              success: false,
+              message: "Prompt not found or already deleted!",
+            });
           }
 
           res.json({
@@ -629,7 +769,7 @@ async function run() {
       },
     );
 
-    //pending.... pending prompt for admin approval
+    //done
     app.get(
       "/admin/prompts",
       verifyToken,
@@ -642,7 +782,7 @@ async function run() {
       },
     );
 
-    //pending... admin activity
+    //done!
     app.get("/admin/users", verifyToken, adminVerifyToken, async (req, res) => {
       const query = {};
       const result = await usersCollection.find(query).toArray();
@@ -660,6 +800,24 @@ async function run() {
         const result = await subscriptionsCollection.find(query).toArray();
         console.log("result form admin route:", result);
         res.json(result);
+      },
+    );
+
+    //done!
+    app.get(
+      "/admin/reports",
+      verifyToken,
+      adminVerifyToken,
+      async (req, res) => {
+        try {
+          const reports = await reportsCollection.find().toArray();
+          return res.json({ success: true, data: reports });
+        } catch (error) {
+          console.error("Error fetching reports:", error);
+          return res
+            .status(500)
+            .json({ success: false, message: "Internal Server Error" });
+        }
       },
     );
 
