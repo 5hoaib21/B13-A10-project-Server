@@ -162,7 +162,8 @@ async function run() {
 
         const authorName = user.name || user.displayName || "Anonymous Creator";
         const authorEmail = user.email || "No Email";
-        const authorImage = user.image || user.photoURL || "https://placeholder.com/user.png";
+        const authorImage =
+          user.image || user.photoURL || "https://placeholder.com/user.png";
 
         const promptDocument = {
           ...data,
@@ -754,7 +755,41 @@ async function run() {
       }
     });
 
-    //pending...
+    app.get("/api/top-creators", async (req, res) => {
+      try {
+        const topCreators = await promptsCollection
+          .aggregate([
+            { $match: { status: "approved" } },
+
+            {
+              $group: {
+                _id: "$userId",
+                totalPrompts: { $sum: 1 },
+                authorName: { $last: "$authorName" },
+                authorImage: { $last: "$authorImage" },
+                authorEmail: { $last: "$authorEmail" },
+              },
+            },
+
+            { $sort: { totalPrompts: -1 } },
+
+            { $limit: 5 },
+          ])
+          .toArray();
+
+        console.log(
+          `🚀 Aggregated top ${topCreators.length} creators successfully.`,
+        );
+        res.json({ success: true, data: topCreators });
+      } catch (error) {
+        console.error("❌ Error aggregating top creators:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Internal Server Error" });
+      }
+    });
+
+    //done!
     app.get(
       "/admin/analytics",
       verifyToken,
