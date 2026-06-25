@@ -113,7 +113,6 @@ async function run() {
         sessionId,
         price,
       });
-      // console.log("userId:", userId);
       const updatedResult = await usersCollection.updateOne(
         { _id: new ObjectId(userId) },
         { $set: { plan: "pro" } },
@@ -249,7 +248,6 @@ async function run() {
           newReview,
         });
       } catch (error) {
-        // console.error("Review Error:", error);
         return res.status(500).json({
           success: false,
           error: "Internal server error during review submission.",
@@ -307,7 +305,6 @@ async function run() {
           message: "Prompt reported successfully. Admin will review it.",
         });
       } catch (error) {
-        // console.error("Report Error:", error);
         return res.status(500).json({
           success: false,
           error: "Internal server error during reporting.",
@@ -348,7 +345,6 @@ async function run() {
             message: `Warning successfully sent to creator (${creatorEmail})!`,
           });
         } catch (error) {
-          console.error("Error warning creator:", error);
           res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -360,13 +356,11 @@ async function run() {
     app.patch("/api/prompts/:id/copy", verifyToken, async (req, res) => {
       try {
         const promptId = req.params.id;
-        // console.log("📥 Received Prompt ID for copy:", promptId);
 
         const result = await promptsCollection.updateOne(
           { _id: new ObjectId(promptId) },
           { $inc: { copyCount: 1 } },
         );
-        // console.log("Result:", result);
         if (result.matchedCount === 0) {
           return res.status(404).json({
             success: false,
@@ -483,7 +477,6 @@ async function run() {
             : "Removed from bookmarks.",
         });
       } catch (error) {
-        // console.error("Bookmark Error:", error);
         return res.status(500).json({
           success: false,
           error: "Internal server error during bookmark toggle.",
@@ -520,13 +513,11 @@ async function run() {
               .json({ message: "User not found or role is already the same!" });
           }
 
-          console.log(`User ${id} role updated to ${role} successfully!`);
           res.json({
             success: true,
             message: `User role updated to ${role} successfully!`,
           });
         } catch (error) {
-          console.error("Error updating user role:", error);
           res.status(500).json({ message: "Internal Server Error" });
         }
       },
@@ -567,7 +558,6 @@ async function run() {
             message: `Prompt status updated to '${status}' successfully!`,
           });
         } catch (error) {
-          console.error("Error updating prompt status:", error);
           res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -599,7 +589,6 @@ async function run() {
             message: "Report dismissed and cleared successfully!",
           });
         } catch (error) {
-          console.error("Error dismissing report:", error);
           res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -645,7 +634,6 @@ async function run() {
             message: "Prompt permanently removed and report cleared!",
           });
         } catch (error) {
-          console.error("Error removing reported prompt:", error);
           res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -677,7 +665,6 @@ async function run() {
             message: "Prompt deleted successfully from database!",
           });
         } catch (error) {
-          console.error("Error deleting prompt:", error);
           res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -703,14 +690,12 @@ async function run() {
               message: "User not found or already deleted!",
             });
           }
-          console.log(`User with ID ${id} deleted successfully by admin.`);
 
           res.json({
             success: true,
             message: "User account deleted successfully!",
           });
         } catch (error) {
-          console.error("Error deleting user:", error);
           res.status(500).json({
             success: false,
             message: "Internal Server Error",
@@ -777,12 +762,9 @@ async function run() {
           ])
           .toArray();
 
-        console.log(
-          `🚀 Aggregated top ${topCreators.length} creators successfully.`,
-        );
+        
         res.json({ success: true, data: topCreators });
       } catch (error) {
-        console.error("❌ Error aggregating top creators:", error);
         res
           .status(500)
           .json({ success: false, message: "Internal Server Error" });
@@ -852,7 +834,6 @@ async function run() {
             engineData,
           });
         } catch (error) {
-          console.error("Analytics Pipeline Error:", error);
           res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -890,7 +871,6 @@ async function run() {
       async (req, res) => {
         const query = {};
         const result = await promptsCollection.find(query).toArray();
-        console.log("result form admin route:", result);
         res.json(result);
       },
     );
@@ -899,7 +879,6 @@ async function run() {
     app.get("/admin/users", verifyToken, adminVerifyToken, async (req, res) => {
       const query = {};
       const result = await usersCollection.find(query).toArray();
-      console.log("result form admin route:", result);
       res.json(result);
     });
 
@@ -911,7 +890,6 @@ async function run() {
       async (req, res) => {
         const query = {};
         const result = await subscriptionsCollection.find(query).toArray();
-        console.log("result form admin route:", result);
         res.json(result);
       },
     );
@@ -926,7 +904,6 @@ async function run() {
           const reports = await reportsCollection.find().toArray();
           return res.json({ success: true, data: reports });
         } catch (error) {
-          console.error("Error fetching reports:", error);
           return res
             .status(500)
             .json({ success: false, message: "Internal Server Error" });
@@ -974,13 +951,9 @@ async function run() {
           difficulty !== "undefined" &&
           difficulty !== ""
         ) {
-          query.difficulty = difficulty; // ← এটা ঠিক আছে
-          // console.log("✅ Difficulty added to query:", difficulty);
+          query.difficulty = difficulty; 
         }
 
-        // console.log("🔍 Final MongoDB Query:", JSON.stringify(query, null, 2));
-
-        // console.log("🔍 MongoDB Query:", JSON.stringify(query, null, 2));
 
         // Sort
         let sortOptions = { createdAt: -1 };
@@ -995,10 +968,8 @@ async function run() {
           .sort(sortOptions)
           .toArray();
 
-        // console.log(`✅ Found ${result.length} prompts`);
         res.json(result);
       } catch (error) {
-        // console.error("❌ Error:", error);
         res.status(500).json({
           success: false,
           message: error.message,
@@ -1009,7 +980,6 @@ async function run() {
     app.get("/prompts/featured", async (req, res) => {
       try {
         if (!promptsCollection) {
-          console.error("❌ promptsCollection is not defined!");
           return res.json({ success: true, data: [] });
         }
 
@@ -1021,12 +991,9 @@ async function run() {
           .limit(6)
           .toArray();
 
-        console.log(
-          `🚀 Fetched ${result.length} featured prompts for home page`,
-        );
+        
         return res.json({ success: true, data: result });
       } catch (error) {
-        console.error("❌ Actual MongoDB Error:", error.message);
         return res.json({ success: true, data: [] });
       }
     });
@@ -1054,7 +1021,6 @@ async function run() {
           data: savedPrompts,
         });
       } catch (error) {
-        // console.error("Error fetching bookmarks:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -1092,7 +1058,6 @@ async function run() {
           data: myReviews,
         });
       } catch (error) {
-        // console.error("Error fetching user reviews:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -1130,7 +1095,6 @@ async function run() {
           },
         });
       } catch (error) {
-        // console.error("Profile Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -1180,9 +1144,7 @@ async function run() {
           ])
           .toArray();
 
-        // console.log(
-        //   `Analytics for ${creatorId} -> Prompts: ${totalPrompts}, Copies: ${stats[0]?.totalCopies || 0}`,
-        // );
+       
 
         return res.status(200).json({
           success: true,
@@ -1193,7 +1155,6 @@ async function run() {
           },
         });
       } catch (error) {
-        // console.error("Analytics Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -1223,7 +1184,6 @@ async function run() {
           },
         });
       } catch (error) {
-        // console.error("User Analytics Error:", error);
         return res
           .status(500)
           .json({ success: false, error: "Internal server error." });
@@ -1242,10 +1202,7 @@ async function run() {
         };
 
         const promptData = await promptsCollection.findOne(query, options);
-        console.log("=== DEBUG DATA ===");
-        console.log("Target ID:", id);
-        console.log("Found Document:", promptData);
-        console.log("==================");
+        
 
         if (!promptData) {
           return res
@@ -1260,7 +1217,7 @@ async function run() {
           rating: promptData.rating || 0,
         });
       } catch (error) {
-        console.error("❌ Error fetching reviews:", error);
+      
         res
           .status(500)
           .json({ success: false, message: "Internal Server Error" });
