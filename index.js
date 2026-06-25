@@ -939,13 +939,7 @@ async function run() {
       try {
         const { search, category, aiTool, difficulty, sort } = req.query;
 
-        // console.log("📥 Received query:", {
-        //   search,
-        //   category,
-        //   aiTool,
-        //   difficulty,
-        //   sort,
-        // });
+      
 
         const query = {};
 
