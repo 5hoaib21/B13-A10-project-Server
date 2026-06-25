@@ -160,9 +160,16 @@ async function run() {
           }
         }
 
+        const authorName = user.name || user.displayName || "Anonymous Creator";
+        const authorEmail = user.email || "No Email";
+        const authorImage = user.image || user.photoURL || "https://placeholder.com/user.png";
+
         const promptDocument = {
           ...data,
           userId: req.user.id,
+          authorName,
+          authorEmail,
+          authorImage,
           createdAt: new Date(),
         };
 
@@ -970,6 +977,31 @@ async function run() {
       }
     });
 
+    app.get("/prompts/featured", async (req, res) => {
+      try {
+        if (!promptsCollection) {
+          console.error("❌ promptsCollection is not defined!");
+          return res.json({ success: true, data: [] });
+        }
+
+        const query = { status: "approved" };
+
+        const result = await promptsCollection
+          .find(query)
+          .sort({ _id: -1 })
+          .limit(6)
+          .toArray();
+
+        console.log(
+          `🚀 Fetched ${result.length} featured prompts for home page`,
+        );
+        return res.json({ success: true, data: result });
+      } catch (error) {
+        console.error("❌ Actual MongoDB Error:", error.message);
+        return res.json({ success: true, data: [] });
+      }
+    });
+
     //done!
     app.get("/prompts/:id", async (req, res) => {
       const { id } = req.params;
@@ -1169,6 +1201,7 @@ async function run() {
       }
     });
 
+    //done!
     app.get("/prompts/:id/reviews", async (req, res) => {
       try {
         const id = req.params.id;
@@ -1181,9 +1214,9 @@ async function run() {
 
         const promptData = await promptsCollection.findOne(query, options);
         console.log("=== DEBUG DATA ===");
-console.log("Target ID:", id);
-console.log("Found Document:", promptData);
-console.log("==================");
+        console.log("Target ID:", id);
+        console.log("Found Document:", promptData);
+        console.log("==================");
 
         if (!promptData) {
           return res
