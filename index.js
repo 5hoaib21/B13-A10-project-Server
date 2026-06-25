@@ -1169,6 +1169,42 @@ async function run() {
       }
     });
 
+    app.get("/prompts/:id/reviews", async (req, res) => {
+      try {
+        const id = req.params.id;
+
+        const query = { _id: new ObjectId(id) };
+
+        const options = {
+          projection: { reviews: 1, totalReviews: 1, rating: 1 },
+        };
+
+        const promptData = await promptsCollection.findOne(query, options);
+        console.log("=== DEBUG DATA ===");
+console.log("Target ID:", id);
+console.log("Found Document:", promptData);
+console.log("==================");
+
+        if (!promptData) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Prompt not found" });
+        }
+
+        res.json({
+          success: true,
+          reviews: promptData.reviews || [],
+          totalReviews: promptData.totalReviews || 0,
+          rating: promptData.rating || 0,
+        });
+      } catch (error) {
+        console.error("❌ Error fetching reviews:", error);
+        res
+          .status(500)
+          .json({ success: false, message: "Internal Server Error" });
+      }
+    });
+
     // app.get('/api/prompts', async (req, res) => {
 
     // })
